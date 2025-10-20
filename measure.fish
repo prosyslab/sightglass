@@ -13,3 +13,5 @@ python3 clean.py benchmark-base.result.csv --header > "bench.csv"
 python3 clean.py benchmark-head.result.csv >> "bench.csv"
 wc -l bench.csv
 
+rm *.log
+
