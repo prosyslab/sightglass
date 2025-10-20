@@ -6,3 +6,12 @@
 bz2/benchmark.wasm
 pulldown-cmark/benchmark.wasm
 spidermonkey/benchmark.wasm
+
+# What would happen?
+noop/benchmark.wasm
+
+# Recommendations
+blake3-scalar/benchmark.wasm
+blake3-simd/benchmark.wasm
+regex/benchmark.wasm
+
