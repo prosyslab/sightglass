@@ -1,4 +1,4 @@
-#! /usr/bin/env
+#! /usr/bin/env fish
 
 set RUST_VERSION "1.88.0"
 set WASMTIME_REPO "git@github.com:prosyslab/wasmtime.git"
