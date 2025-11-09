@@ -3,12 +3,10 @@
 # all benchmarks could take quite some time. This list is a compromise between
 # picking representative real-world benchmarks and measurement time.
 
+# Default
 bz2/benchmark.wasm
 pulldown-cmark/benchmark.wasm
 spidermonkey/benchmark.wasm
-
-# What would happen?
-noop/benchmark.wasm
 
 # Recommendations
 blake3-scalar/benchmark.wasm
