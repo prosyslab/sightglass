@@ -3,6 +3,16 @@
 import argparse
 import pandas as pd
 
+ENGINES = ["BASE", "OPTS", "OPTS-LLVM", "HYDRA"]
+
+def make_table(df: pd.DataFrame, phase: str):
+    result = []
+    for engine in ENGINES:
+        performance = df[(df['engine'] == engine) & (df['phase'] == "Execution")].groupby('wasm')['count'].mean()
+        result.append(performance)
+    print(pd.concat(result, axis=1))
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("input_csv")
@@ -10,16 +20,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     df = pd.read_csv(args.input_csv, dtype={"count": int})
-
-    base_perf = df[(df['engine'] == "Baseline") & (df['phase'] == "Execution")].groupby('wasm')['count'].mean()
-    head_perf = df[(df['engine'] == "Head") & (df['phase'] == "Execution")].groupby('wasm')['count'].mean()
-    gain = (base_perf - head_perf) / head_perf * 100 
-
     pd.set_option('display.float_format', '{:,.2f}'.format)
-    print(pd.concat([base_perf, head_perf, gain], axis=1))
 
-
-    # print(base_perf)
-    # print(head_perf)
-    # print(( base_perf - head_perf ) / head_perf * 100)
+    print("RQ2")
+    print("EXECUTION")
+    make_table(df, "Execution")
+    make_table(df, "Compilation")
 
