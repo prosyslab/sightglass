@@ -45,6 +45,9 @@ python3 clean.py $HYDRA_OUTPUT >> $OUTPUT
 wc -l $OUTPUT
 ./summary.py $OUTPUT
 
+
+echo "STATISTICAL TESTS"
+
 cargo run -- benchmark \
 	--engine $BASE_ENGINE  --engine $OPTS_ENGINE \
 	--iterations-per-process 20 -s 0.05 \
