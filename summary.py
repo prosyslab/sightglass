@@ -8,9 +8,9 @@ ENGINES = ["BASE", "OPTS", "OPTS-LLVM", "HYDRA"]
 def make_table(df: pd.DataFrame, phase: str):
     result = []
     for engine in ENGINES:
-        performance = df[(df['engine'] == engine) & (df['phase'] == "Execution")].groupby('wasm')['count'].mean()
+        performance = df[(df['engine'] == engine) & (df['phase'] == phase)].groupby('wasm')['count'].mean().rename(engine)
         result.append(performance)
-    print(pd.concat(result, axis=1))
+    return pd.concat(result, axis=1)
 
 
 if __name__ == "__main__":
@@ -24,6 +24,7 @@ if __name__ == "__main__":
 
     print("RQ2")
     print("EXECUTION")
-    make_table(df, "Execution")
-    make_table(df, "Compilation")
+    print(make_table(df, "Execution").to_csv())
+    print("Compilation")
+    print(make_table(df, "Compilation").to_csv())
 
