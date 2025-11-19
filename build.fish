@@ -9,8 +9,11 @@ pushd engines
 pushd wasmtime
 rustc build.rs # this generates ./build
 
-# set -l VARIANTS base opts llvm-opts hydra
-set -l VARIANTS opts 
+if test (count $argv) -gt 0
+  set VARIANTS $argv
+else
+  set VARIANTS base opts llvm-opts hydra
+end
 
 for variant in $VARIANTS 
 	echo "############## $variant #############"

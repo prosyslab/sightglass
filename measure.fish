@@ -1,10 +1,37 @@
 #! /usr/bin/env fish
 
+# ======================== CONFIGURATIONS =========================
+argparse 'i/iter=' 'p/phase=+' 'v/variant=+' 'h/help' -- $argv
+or return
+
+if set -q _flag_help
+    echo "Usage: ./measure.fish [-i ITER] [-p PHASE...] [-v VARIANT...]"
+    echo "Defaults:"
+    echo "  ITER: 10"
+    echo "  PHASE: compilation execution"
+    echo "  VARIANTS: base opts llvm-opts hydra"
+    return 0
+end
+
 set -l ITER 10
-set -l OUTFMT csv
+set -ql _flag_iter[1]; and set ITER $_flag_iter[-1]
+
 set -l PHASE compilation execution
-set -l VARIANTS base opts llvm-opts hydra # gcc-opts go-opts
+set -ql _flag_phase[1]; and set PHASE $_flag_phase
+
+set -l VARIANTS base opts llvm-opts hydra
+set -ql _flag_variant[1]; and set VARIANTS $_flag_variant
+
 set -l OUTPUT "bench.csv"
+set -l OUTFMT csv
+
+echo "----------------------------------------"
+echo "CONFIG | Iter: $ITER"
+echo "       | Phase: $PHASE"
+echo "       | Variants: $VARIANTS"
+echo "----------------------------------------"
+
+# ======================== CONFIGURATIONS =========================
 
 rm $OUTPUT
 echo "engine,wasm,phase,count" > $OUTPUT
@@ -25,6 +52,4 @@ for variant in $VARIANTS
 end
 wc -l $OUTPUT
 ./summary.py $OUTPUT
-
-rm *.log
 
