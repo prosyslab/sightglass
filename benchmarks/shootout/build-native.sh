@@ -7,7 +7,7 @@
 ENGINE_DIR=${ENGINE_DIR:-"../../engines/native"}
 SRC_DIR=${SRC_DIR:-"src"}
 BENCHMARKS=${BENCHMARKS:-$(find $SRC_DIR -name '*.c')}
-CFLAGS=${CFLAGS:-"-O3 -fPIC -I$SRC_DIR -Wno-attributes"}
+CFLAGS=${CFLAGS:-"-O0 -fPIC -I$SRC_DIR -Wno-attributes"}
 LDFLAGS=${LDFLAGS:-"-shared -L$ENGINE_DIR"}
 
 for BENCHMARK in $BENCHMARKS; do

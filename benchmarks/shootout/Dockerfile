@@ -33,7 +33,7 @@ WORKDIR /benchmark
 RUN for BENCH in $(find $SRC -name '*.c'); do \
     WASM=shootout-$(basename $BENCH .c).wasm; \
     echo "Compiling $WASM"; \
-    $CC $CFLAGS $BENCH -O3 -g -I$SRC -o $WASM; \
+    $CC $CFLAGS $BENCH -O0 -g -I$SRC -o $WASM; \
     done
 # We output the Wasm file to the `/benchmark` directory, where the client
 # expects it.
