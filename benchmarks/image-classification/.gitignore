@@ -3,3 +3,4 @@ openvino
 *.tgz
 *.xml
 *.bin
+rust-benchmark-native

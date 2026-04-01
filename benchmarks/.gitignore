@@ -1,2 +1,4 @@
 */*.so
 */target
+*.plain.wasm
+rust-benchmark-native-*

@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+# Build all of the benchmarks' "plain" (no-opt) variants, or a random subset.
+#
+# Usage: ./build-plain-all.sh <number of benchmarks>
+# - <number of benchmarks>, an optional number of benchmarks to build; if
+#   provided, this script will randomize the list of benchmarks and pick a
+#   subset of them to build
+
+set -euo pipefail
+
+# From https://stackoverflow.com/a/246128:
+SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]:-$0}"; )" &> /dev/null && pwd 2> /dev/null; )";
+BENCHMARKS_DIR=$(realpath "${SCRIPT_DIR}")
+BUILD_SCRIPT="${BENCHMARKS_DIR}/build-plain.sh"
+
+DOCKERFILES=$(find "${BENCHMARKS_DIR}" -name Dockerfile)
+
+# If a numeric parameter `N` is provided to the script (e.g., `./build-plain-all.sh
+# 5`), randomly select `N` benchmarks to rebuild; otherwise, rebuild all
+# benchmarks.
+re='^[0-9]+$'
+if [[ "${1:-}" =~ ${re} ]]; then
+    DOCKERFILES=$(echo "${DOCKERFILES}" | shuf -n "${1}")
+fi
+
+for DOCKERFILE in ${DOCKERFILES}; do
+    BENCHMARK_DIR=$(dirname "${DOCKERFILE}")
+    "${BUILD_SCRIPT}" "${BENCHMARK_DIR}"
+done
+

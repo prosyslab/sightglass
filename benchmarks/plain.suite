@@ -1,0 +1,40 @@
+# "Plain" (no-opt) variants of the default Sightglass benchmarks.
+#
+# This mirrors `default.suite` but points at `*.plain.wasm` artifacts produced by
+# `./build-plain-all.sh` / `./build-plain.sh`.
+
+bz2/benchmark.plain.wasm
+pulldown-cmark/benchmark.plain.wasm
+spidermonkey/spidermonkey-markdown.plain.wasm
+spidermonkey/spidermonkey-json.plain.wasm
+spidermonkey/spidermonkey-regex.plain.wasm
+
+blake3-scalar/benchmark.plain.wasm
+blake3-simd/benchmark.plain.wasm
+regex/benchmark.plain.wasm
+rust-compression/benchmark.plain.wasm
+rust-html-rewriter/benchmark.plain.wasm
+rust-json/benchmark.plain.wasm
+rust-protobuf/benchmark.plain.wasm
+tinygo/tinygo-json.plain.wasm
+tinygo/tinygo-regex.plain.wasm
+
+shootout/shootout-ackermann.plain.wasm
+shootout/shootout-base64.plain.wasm
+shootout/shootout-ctype.plain.wasm
+shootout/shootout-ed25519.plain.wasm
+shootout/shootout-fib2.plain.wasm
+shootout/shootout-gimli.plain.wasm
+shootout/shootout-heapsort.plain.wasm
+shootout/shootout-keccak.plain.wasm
+shootout/shootout-matrix.plain.wasm
+shootout/shootout-memmove.plain.wasm
+shootout/shootout-minicsv.plain.wasm
+shootout/shootout-nestedloop.plain.wasm
+shootout/shootout-random.plain.wasm
+shootout/shootout-ratelimit.plain.wasm
+shootout/shootout-seqhash.plain.wasm
+shootout/shootout-sieve.plain.wasm
+shootout/shootout-switch.plain.wasm
+shootout/shootout-xblabla20.plain.wasm
+shootout/shootout-xchacha20.plain.wasm

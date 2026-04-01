@@ -1,0 +1,61 @@
+diff --git a/Cargo.toml b/Cargo.toml
+index a4775e4..9c450d6 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -7,8 +7,11 @@ edition = "2021"
+ publish = false
+ 
+ [dependencies]
+-image = { version = "0.23.14", default-features = false, features = ["jpeg"]  }
++image = { version = "0.23.14", default-features = false, features = ["jpeg"] }
+ wasi-nn = "0.2.1"
+ sightglass-api = "0.1"
+ 
+ [workspace]
++
++[lib]
++crate-type = ["cdylib"]
+diff --git a/build.rs b/build.rs
+new file mode 100644
+index 0000000..6d7d743
+--- /dev/null
++++ b/build.rs
+@@ -0,0 +1,3 @@
++fn main() {
++    println!("cargo:rustc-cdylib-link-arg=-L../../../engines/native/");
++}
+diff --git a/src/main.rs b/src/lib.rs
+similarity index 92%
+rename from src/main.rs
+rename to src/lib.rs
+index c22704b..473bbde 100644
+--- a/src/main.rs
++++ b/src/lib.rs
+@@ -6,7 +6,14 @@ use std::fs;
+ use wasi_nn;
+ mod imagenet_classes;
+ 
+-pub fn main() {
++#[link(name = "engine")]
++extern "C" {
++    fn bench_start() -> ();
++    fn bench_end() -> ();
++}
++
++#[no_mangle]
++pub extern "C" fn native_entry() {
+     let xml = fs::read_to_string("./mobilenet.xml").unwrap();
+     let weights = fs::read("./mobilenet.bin").unwrap();
+ 
+@@ -60,7 +67,10 @@ pub fn main() {
+             );
+         }
+     } else {
+-        eprintln!("Benchmark failed, confidence is under 90%. Result = {}", results[0].1);
++        eprintln!(
++            "Benchmark failed, confidence is under 90%. Result = {}",
++            results[0].1
++        );
+     }
+ }
+ 

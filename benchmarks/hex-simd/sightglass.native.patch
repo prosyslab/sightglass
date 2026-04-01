@@ -1,0 +1,54 @@
+diff --git a/Cargo.toml b/Cargo.toml
+index ad3ffec..8e7ce82 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -13,3 +13,6 @@ quickcheck = "1.0.3"
+ 
+ [profile.release]
+ strip = 'debuginfo'
++
++[lib]
++crate-type = ["cdylib"]
+diff --git a/build.rs b/build.rs
+new file mode 100644
+index 0000000..6d7d743
+--- /dev/null
++++ b/build.rs
+@@ -0,0 +1,3 @@
++fn main() {
++    println!("cargo:rustc-cdylib-link-arg=-L../../../engines/native/");
++}
+diff --git a/src/main.rs b/src/lib.rs
+similarity index 98%
+rename from src/main.rs
+rename to src/lib.rs
+index 79c801a..391d564 100644
+--- a/src/main.rs
++++ b/src/lib.rs
+@@ -7,12 +7,23 @@ use std::arch::x86::*;
+ #[cfg(target_arch = "x86_64")]
+ use std::arch::x86_64::*;
+ 
+-fn main() {
++#[link(name = "engine")]
++extern "C" {
++    fn bench_start() -> ();
++    fn bench_end() -> ();
++}
++
++#[no_mangle]
++pub extern "C" fn native_entry() {
+     let input = std::fs::read("./default.input").unwrap();
+     let mut dst = vec![0; 2 * input.len()];
+-    bench::start();
++    unsafe {
++        bench_start();
++    }
+     let s = hex_encode(&input, &mut dst).unwrap();
+-    bench::end();
++    unsafe {
++        bench_end();
++    }
+     println!("{s}");
+ }
+ 

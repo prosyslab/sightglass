@@ -1,0 +1,157 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -1,11 +1,8 @@
+ [package]
+ name = "benchmark"
+ version = "0.1.0"
++autobins = false
+ edition = "2021"
+-
+-[[bin]]
+-name = "benchmark"
+-path = "src/main.rs"
+ 
+ [[bin]]
+ name = "converter"
+@@ -17,7 +14,7 @@
+ serde_json = "1.0"
+ sightglass-api = "0.1"
+ 
+-[build-dependencies]
+-prost-build = "0.13"
++[workspace]
+ 
+-[workspace]
++[lib]
++crate-type = ["cdylib"]
+--- a/build.rs
++++ b/build.rs
+@@ -1,7 +1,6 @@
+ fn main() {
++    println!("cargo:rustc-cdylib-link-arg=-L../../../engines/native/");
++    println!("cargo:rerun-if-changed=benchmark.generated.rs");
+     let out_dir = std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap());
+-    prost_build::Config::new()
+-        .out_dir(&out_dir)
+-        .compile_protos(&["../schema.proto"], &["../"])
+-        .unwrap();
++    std::fs::copy("benchmark.generated.rs", out_dir.join("benchmark.rs")).unwrap();
+ }
+--- a/benchmark.generated.rs
++++ b/benchmark.generated.rs
+@@ -0,0 +1,75 @@
++#[derive(Clone, PartialEq, ::prost::Message)]
++pub struct User {
++    #[prost(uint64, tag = "1")]
++    pub id: u64,
++    #[prost(string, tag = "2")]
++    pub username: ::prost::alloc::string::String,
++    #[prost(string, tag = "3")]
++    pub email: ::prost::alloc::string::String,
++    #[prost(string, tag = "4")]
++    pub full_name: ::prost::alloc::string::String,
++    #[prost(bool, tag = "5")]
++    pub is_active: bool,
++    #[prost(string, tag = "6")]
++    pub created_at: ::prost::alloc::string::String,
++    #[prost(string, tag = "7")]
++    pub updated_at: ::prost::alloc::string::String,
++    #[prost(message, optional, tag = "8")]
++    pub profile: ::core::option::Option<Profile>,
++    #[prost(message, optional, tag = "9")]
++    pub settings: ::core::option::Option<Settings>,
++    #[prost(message, repeated, tag = "10")]
++    pub posts: ::prost::alloc::vec::Vec<Post>,
++}
++
++#[derive(Clone, PartialEq, ::prost::Message)]
++pub struct Profile {
++    #[prost(string, tag = "1")]
++    pub bio: ::prost::alloc::string::String,
++    #[prost(string, tag = "2")]
++    pub avatar_url: ::prost::alloc::string::String,
++    #[prost(string, tag = "3")]
++    pub location: ::prost::alloc::string::String,
++    #[prost(string, optional, tag = "4")]
++    pub website: ::core::option::Option<::prost::alloc::string::String>,
++    #[prost(string, repeated, tag = "5")]
++    pub social_links: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
++}
++
++#[derive(Clone, PartialEq, ::prost::Message)]
++pub struct Settings {
++    #[prost(string, tag = "1")]
++    pub theme: ::prost::alloc::string::String,
++    #[prost(string, tag = "2")]
++    pub language: ::prost::alloc::string::String,
++    #[prost(bool, tag = "3")]
++    pub notifications_enabled: bool,
++    #[prost(string, tag = "4")]
++    pub privacy_level: ::prost::alloc::string::String,
++    #[prost(map = "string, string", tag = "5")]
++    pub preferences: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
++}
++
++#[derive(Clone, PartialEq, ::prost::Message)]
++pub struct Post {
++    #[prost(uint64, tag = "1")]
++    pub id: u64,
++    #[prost(string, tag = "2")]
++    pub title: ::prost::alloc::string::String,
++    #[prost(string, tag = "3")]
++    pub content: ::prost::alloc::string::String,
++    #[prost(string, repeated, tag = "4")]
++    pub tags: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
++    #[prost(uint32, tag = "5")]
++    pub likes: u32,
++    #[prost(uint32, tag = "6")]
++    pub comments_count: u32,
++    #[prost(string, tag = "7")]
++    pub published_at: ::prost::alloc::string::String,
++}
++
++#[derive(Clone, PartialEq, ::prost::Message)]
++pub struct UserList {
++    #[prost(message, repeated, tag = "1")]
++    pub users: ::prost::alloc::vec::Vec<User>,
++}
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -0,0 +1,37 @@
++//! Protobuf serialization and deserialization benchmark using prost.
++//!
++//! This benchmark tests Protocol Buffers encoding and decoding performance
++//! on a realistic data structure representing user data.
++
++use prost::Message;
++
++#[link(name = "engine")]
++extern "C" {
++    fn bench_start() -> ();
++    fn bench_end() -> ();
++}
++
++// Include the generated protobuf code from OUT_DIR
++#[allow(non_snake_case)]
++mod proto {
++    include!(concat!(env!("OUT_DIR"), "/benchmark.rs"));
++}
++
++use proto::*;
++
++#[no_mangle]
++pub extern "C" fn native_entry() {
++    let data = std::fs::read("default.input").expect("unable to read default.input");
++
++    unsafe { bench_start(); }
++
++    let user_list = UserList::decode(&data[..]).expect("failed to decode protobuf");
++
++    let mut buf = Vec::new();
++    user_list.encode(&mut buf).expect("failed to encode protobuf");
++
++    unsafe { bench_end(); }
++
++    eprintln!("[rust-protobuf] processed {} users", user_list.users.len());
++    eprintln!("[rust-protobuf] serialized size: {} bytes", buf.len());
++}

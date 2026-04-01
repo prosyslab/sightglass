@@ -1,0 +1,9 @@
+blake3-scalar
+pulldown-cmark
+hex-simd
+blind-sig
+regex
+rust-compression
+rust-html-rewriter
+rust-json
+rust-protobuf
