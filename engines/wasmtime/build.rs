@@ -66,7 +66,17 @@ fn main() {
     // Build the engine library.
     section("Building the engine");
     exec(
-        &["cargo", "build", "--release", "-p", "wasmtime-bench-api"],
+        &[
+            "cargo",
+            "build",
+            "--release",
+            "-p",
+            "wasmtime-bench-api",
+            "-p",
+            "cranelift-codegen",
+            "--features",
+            "isle-split-match",
+        ],
         &build_dir,
     );
 
@@ -136,7 +146,8 @@ fn exec<P: AsRef<Path>>(command: &[&str], working_directory: P) {
     let mut cmd = Command::new(command[0]);
     cmd.args(&command[1..]);
     cmd.current_dir(working_directory);
-    cmd.status().expect("unable to execute command");
+    let status = cmd.status().expect("unable to execute command");
+    assert!(status.success(), "command failed: {}", command.join(" "));
 }
 
 /// Same as `exec` but captures the command output.
