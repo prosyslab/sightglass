@@ -16,12 +16,12 @@ cp sightglass.native.patch rust-benchmark-native/
 
 (
   cd rust-benchmark-native
-  cargo build --release
+  cargo build --release --target-dir target-llvm-release
   shopt -s nullglob
-  OUT_SOS=( target/release/lib*.so )
+  OUT_SOS=( target-llvm-release/release/lib*.so )
   shopt -u nullglob
   if [[ ${#OUT_SOS[@]} -ne 1 ]]; then
-    echo "Expected exactly one cdylib under target/release/, found ${#OUT_SOS[@]}" >&2
+    echo "Expected exactly one cdylib under target-llvm-release/release/, found ${#OUT_SOS[@]}" >&2
     printf '  - %s\n' "${OUT_SOS[@]:-}" >&2
     exit 1
   fi
@@ -31,17 +31,16 @@ cp sightglass.native.patch rust-benchmark-native/
 
 (
   cd rust-benchmark-native
-  cargo build
+  cargo build --target-dir target-llvm-debug
   shopt -s nullglob
-  OUT_SOS=( target/debug/lib*.so )
+  OUT_SOS=( target-llvm-debug/debug/lib*.so )
   shopt -u nullglob
   if [[ ${#OUT_SOS[@]} -ne 1 ]]; then
-    echo "Expected exactly one cdylib under target/debug/, found ${#OUT_SOS[@]}" >&2
+    echo "Expected exactly one cdylib under target-llvm-debug/debug/, found ${#OUT_SOS[@]}" >&2
     printf '  - %s\n' "${OUT_SOS[@]:-}" >&2
     exit 1
   fi
   cp "${OUT_SOS[0]}" ../benchmark.llvm.debug.so
   cd -
 )
-
 

@@ -95,9 +95,9 @@ if [[ -f "$BENCHMARK_DIR/setup.sh" ]]; then
   (cd "$BENCHMARK_DIR" && bash ./setup.sh)
 fi
 
-# Keep variant builds isolated so multiple variants can coexist.
-WORKDIR="$BENCHMARK_DIR/rust-benchmark-native-$VARIANT"
-TARGET_DIR="target-clif-$VARIANT"
+# Keep all native patching in one workspace and isolate builds by target dir.
+WORKDIR="$BENCHMARK_DIR/rust-benchmark-native"
+TARGET_DIR="target-clif-$VARIANT-native"
 
 rm -rf "$WORKDIR"
 cp -r "$BENCHMARK_DIR/rust-benchmark" "$WORKDIR/"
@@ -117,5 +117,4 @@ cp "$BENCHMARK_DIR/sightglass.native.patch" "$WORKDIR/"
   fi
   cp "${OUT_SOS[0]}" "$OUT_SO"
 )
-
 

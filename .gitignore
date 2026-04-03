@@ -8,3 +8,5 @@ benchmarks/**/*.o
 **/stdout-*-*.log
 **/stderr-*-*.log
 *.dump
+
+rust-benchmark-*
