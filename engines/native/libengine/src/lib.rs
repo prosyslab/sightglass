@@ -8,16 +8,19 @@
 //! consistent with the assumption that we are executing a Wasm file.
 //!
 
-pub use self::FcntlArg::*;
 use anyhow::{Context, Result};
-use nix::fcntl::FcntlArg;
 use nix::libc::fflush;
-use nix::unistd::{close, dup, dup2, pipe, read};
+use nix::unistd::{close, dup, dup2};
 use std::env;
 use std::os::raw::{c_int, c_void};
+use std::os::fd::AsRawFd;
 use std::path::{Path, PathBuf};
+use std::ptr;
 use std::slice;
-use std::{fs::File, io::Write};
+use std::{
+    fs::File,
+    io::{self, Write},
+};
 
 pub type ExitCode = c_int;
 pub const OK: ExitCode = 0;
@@ -125,6 +128,8 @@ pub extern "C" fn wasm_bench_create(
             config.execution_start,
             config.execution_end,
             working_dir,
+            stdout_path,
+            stderr_path,
             stdout,
             stderr,
         )?);
@@ -204,6 +209,8 @@ struct BenchState {
     execution_start: extern "C" fn(*mut u8),
     execution_end: extern "C" fn(*mut u8),
     working_dir: PathBuf,
+    stdout_path: PathBuf,
+    stderr_path: PathBuf,
     stdout_file: File,
     stderr_file: File,
 }
@@ -211,6 +218,53 @@ struct BenchState {
 static mut NATIVE_EXECUTION_TIMER: Option<*mut u8> = None;
 static mut NATIVE_EXECUTION_START: Option<extern "C" fn(*mut u8)> = None;
 static mut NATIVE_EXECUTION_END: Option<extern "C" fn(*mut u8)> = None;
+
+fn flush_process_stdio() {
+    let _ = io::stdout().flush();
+    let _ = io::stderr().flush();
+    unsafe { fflush(ptr::null_mut()) };
+}
+
+struct RedirectedStdio {
+    original_stdout: c_int,
+    original_stderr: c_int,
+}
+
+impl RedirectedStdio {
+    fn new(stdout_file: &File, stderr_file: &File) -> Result<Self> {
+        flush_process_stdio();
+
+        let original_stdout = dup(1)?;
+        let original_stderr = dup(2)?;
+
+        if let Err(err) = dup2(stdout_file.as_raw_fd(), 1) {
+            let _ = close(original_stdout);
+            let _ = close(original_stderr);
+            return Err(err.into());
+        }
+        if let Err(err) = dup2(stderr_file.as_raw_fd(), 2) {
+            let _ = dup2(original_stdout, 1);
+            let _ = close(original_stdout);
+            let _ = close(original_stderr);
+            return Err(err.into());
+        }
+
+        Ok(Self {
+            original_stdout,
+            original_stderr,
+        })
+    }
+}
+
+impl Drop for RedirectedStdio {
+    fn drop(&mut self) {
+        flush_process_stdio();
+        let _ = dup2(self.original_stdout, 1);
+        let _ = dup2(self.original_stderr, 2);
+        let _ = close(self.original_stdout);
+        let _ = close(self.original_stderr);
+    }
+}
 
 #[no_mangle]
 pub extern "C" fn bench_start() {
@@ -225,6 +279,14 @@ pub extern "C" fn bench_end() {
 }
 
 impl BenchState {
+    fn reopen_output_files(&mut self) -> Result<()> {
+        self.stdout_file = File::create(&self.stdout_path)
+            .with_context(|| format!("failed to create {}", self.stdout_path.display()))?;
+        self.stderr_file = File::create(&self.stderr_path)
+            .with_context(|| format!("failed to create {}", self.stderr_path.display()))?;
+        Ok(())
+    }
+
     fn new(
         compilation_timer: *mut u8,
         compilation_start: extern "C" fn(*mut u8),
@@ -236,6 +298,8 @@ impl BenchState {
         execution_start: extern "C" fn(*mut u8),
         execution_end: extern "C" fn(*mut u8),
         working_dir: PathBuf,
+        stdout_path: PathBuf,
+        stderr_path: PathBuf,
         stdout_file: File,
         stderr_file: File,
     ) -> Result<Self> {
@@ -250,6 +314,8 @@ impl BenchState {
             execution_start,
             execution_end,
             working_dir,
+            stdout_path,
+            stderr_path,
             stdout_file,
             stderr_file,
         })
@@ -275,12 +341,6 @@ impl BenchState {
             NATIVE_EXECUTION_END = Some(self.execution_end);
         }
 
-        // Setup pipe for capturing stdout
-        let pipe_stdout = pipe()?;
-        let original_stdout = dup(1)?;
-        dup2(pipe_stdout.1, 1)?;
-        close(pipe_stdout.1)?;
-
         // Load the library
         let native_lib = self.working_dir.join("./benchmark.so");
         let native_compiled_code_lib = unsafe { libloading::Library::new(&native_lib)? };
@@ -291,27 +351,18 @@ impl BenchState {
         let root_dir = env::current_dir()?;
         let working_dir = Path::new(&self.working_dir);
         assert!(env::set_current_dir(&working_dir).is_ok());
+        self.reopen_output_files()?;
 
-        // Run the benchmark
-        unsafe { (native_entry)() };
+        {
+            let _stdio = RedirectedStdio::new(&self.stdout_file, &self.stderr_file)?;
+
+            // Run the benchmark with stdout/stderr streamed directly to the
+            // configured log files so large outputs cannot fill a pipe buffer.
+            unsafe { (native_entry)() };
+        }
 
         // Reset working directory
         assert!(env::set_current_dir(&root_dir).is_ok());
-
-        // Flush stdout and set fp for reading the buffer
-        let fp_stdout = unsafe { libc::fdopen(pipe_stdout.1, &('w' as libc::c_char)) };
-        unsafe { fflush(fp_stdout) };
-        dup2(original_stdout, 1)?;
-
-        // Read the stdout buffer written by the benchmark and write results to a file
-        let mut buffer = [0];
-        while let Ok(count) = read(pipe_stdout.0, &mut buffer) {
-            if count == 0 {
-                break;
-            }
-            self.stdout_file.write_all(&buffer)?;
-        }
-        drop(fp_stdout);
 
         Ok(())
     }
