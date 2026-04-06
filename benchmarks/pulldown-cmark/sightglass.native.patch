@@ -40,7 +40,7 @@ index c7d1496..ae60e94 100644
 +pub extern "C" fn native_entry() {
      let markdown_input = std::fs::read_to_string("./default.input.md").unwrap();
  
-     let mut options = Options::empty();
+     let options = Options::empty();
  
 -    bench::start();
 +    unsafe {

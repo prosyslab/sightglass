@@ -4,7 +4,7 @@ use sightglass_api as bench;
 fn main() {
     let markdown_input = std::fs::read_to_string("./default.input.md").unwrap();
 
-    let mut options = Options::empty();
+    let options = Options::empty();
 
     bench::start();
 
