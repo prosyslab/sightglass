@@ -6,6 +6,13 @@
 //! ```
 //!
 //! Note that a `hash` must be the full commit hash.
+//!
+//! Optional environment variables:
+//! - `BUILD_PROFILE`: logical build-profile name recorded in `.build-info`.
+//! - `CARGO_PACKAGE_FEATURES`: comma-separated `package/feature` entries to
+//!   enable for the engine build.
+//! - `BUILD_PATCHES`: comma-separated patch ids to apply before the engine
+//!   build.
 
 #![deny(missing_docs)]
 #![deny(clippy::all)]
@@ -19,6 +26,14 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::SystemTime;
+
+const JITDUMP_PATCH: &str = include_str!("../../../../compilers/patches/jitdump.patch");
+
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+struct CargoPackageFeature {
+    package: String,
+    feature: String,
+}
 
 fn main() {
     // The sole CLI argument is the path at which to place the built engine library and metadata.
@@ -39,6 +54,10 @@ fn main() {
     let repository =
         var("REPOSITORY").unwrap_or("https://github.com/bytecodealliance/wasmtime/".into());
     let revision = var("REVISION").unwrap_or("main".into());
+    let build_profile = var("BUILD_PROFILE").unwrap_or("bench".into());
+    let cargo_package_features =
+        parse_package_features(&var("CARGO_PACKAGE_FEATURES").unwrap_or_default());
+    let build_patches = parse_patch_ids(&var("BUILD_PATCHES").unwrap_or_default());
     let (build_dir, remove_build_dir) = if let Some(p) = env::var_os("BUILD_DIR") {
         let p = PathBuf::from(p)
             .canonicalize()
@@ -62,28 +81,27 @@ fn main() {
         &["git", "submodule", "update", "--init", "--depth", "1"],
         &build_dir,
     );
+    if !build_patches.is_empty() {
+        section("Applying local patches");
+        apply_named_patches(&build_dir, &build_patches);
+    }
 
     // Build the engine library.
     section("Building the engine");
-    exec(
-        &[
-            "cargo",
-            "build",
-            "--release",
-            "-p",
-            "wasmtime-bench-api",
-            "-p",
-            "cranelift-codegen",
-            "--features",
-            "isle-split-match",
-        ],
-        &build_dir,
-    );
+    let cargo_build_cmd = build_engine_command(&cargo_package_features);
+    exec(&cargo_build_cmd, &build_dir);
 
     // Construct a `.build-info` file that will capture the important details a user would want to
     // know if attempting to replicate benchmark results. (The current set is not exhaustive!).
     section("Collecting metadata");
-    let build_info = write_buildinfo(&build_dir, &repository, &revision);
+    let build_info = write_buildinfo(
+        &build_dir,
+        &repository,
+        &revision,
+        &build_profile,
+        &cargo_package_features,
+        &build_patches,
+    );
     let build_info_contents =
         fs::read_to_string(&build_info).expect("unable to read .build-info file");
     eprintln!("{}", build_info_contents);
@@ -141,29 +159,194 @@ fn create_temp_directory() -> PathBuf {
 }
 
 /// Execute a `command` in the `working_directory`, panicking on failure.
-fn exec<P: AsRef<Path>>(command: &[&str], working_directory: P) {
-    eprintln!("> {}", command.join(" "));
-    let mut cmd = Command::new(command[0]);
-    cmd.args(&command[1..]);
+fn exec<P, S>(command: &[S], working_directory: P)
+where
+    P: AsRef<Path>,
+    S: AsRef<str>,
+{
+    eprintln!(
+        "> {}",
+        command
+            .iter()
+            .map(AsRef::as_ref)
+            .collect::<Vec<_>>()
+            .join(" ")
+    );
+    let mut cmd = Command::new(command[0].as_ref());
+    cmd.args(command[1..].iter().map(AsRef::as_ref));
     cmd.current_dir(working_directory);
     let status = cmd.status().expect("unable to execute command");
-    assert!(status.success(), "command failed: {}", command.join(" "));
+    assert!(
+        status.success(),
+        "command failed: {}",
+        command
+            .iter()
+            .map(AsRef::as_ref)
+            .collect::<Vec<_>>()
+            .join(" ")
+    );
+}
+
+/// Execute a `command` in the `working_directory` and return whether it succeeded.
+fn exec_ok<P, S>(command: &[S], working_directory: P) -> bool
+where
+    P: AsRef<Path>,
+    S: AsRef<str>,
+{
+    eprintln!(
+        "> {}",
+        command
+            .iter()
+            .map(AsRef::as_ref)
+            .collect::<Vec<_>>()
+            .join(" ")
+    );
+    let mut cmd = Command::new(command[0].as_ref());
+    cmd.args(command[1..].iter().map(AsRef::as_ref));
+    cmd.current_dir(working_directory);
+    match cmd.status() {
+        Ok(status) => status.success(),
+        Err(_) => false,
+    }
 }
 
 /// Same as `exec` but captures the command output.
-fn exec_with_stdout<P: AsRef<Path>>(command: &[&str], working_directory: P) -> String {
-    eprintln!("> {}", command.join(" "));
-    let mut cmd = Command::new(command[0]);
-    cmd.args(&command[1..]);
+fn exec_with_stdout<P, S>(command: &[S], working_directory: P) -> String
+where
+    P: AsRef<Path>,
+    S: AsRef<str>,
+{
+    eprintln!(
+        "> {}",
+        command
+            .iter()
+            .map(AsRef::as_ref)
+            .collect::<Vec<_>>()
+            .join(" ")
+    );
+    let mut cmd = Command::new(command[0].as_ref());
+    cmd.args(command[1..].iter().map(AsRef::as_ref));
     cmd.current_dir(working_directory);
     let out = cmd.output().expect("unable to execute command");
     assert!(out.status.success());
     std::str::from_utf8(&out.stdout).unwrap().trim().to_string()
 }
 
+fn apply_named_patches(build_dir: &Path, patch_ids: &[String]) {
+    for patch_id in patch_ids {
+        let (patch_filename, patch_contents) = match patch_id.as_str() {
+            "jitdump" => (".jitdump.patch", JITDUMP_PATCH),
+            _ => panic!("unsupported build patch id: {}", patch_id),
+        };
+        let patch_path = build_dir.join(patch_filename);
+        fs::write(&patch_path, patch_contents).unwrap_or_else(|error| {
+            panic!(
+                "unable to write patch file {}: {}",
+                patch_path.display(),
+                error
+            )
+        });
+        let patch_path_str = patch_path
+            .to_str()
+            .expect("patch path should be valid UTF-8");
+        if !exec_ok(&["git", "apply", "--check", patch_path_str], build_dir) {
+            panic!("patch {} no longer applies cleanly", patch_id);
+        }
+        exec(&["git", "apply", patch_path_str], build_dir);
+    }
+}
+
+fn parse_package_features(raw: &str) -> Vec<CargoPackageFeature> {
+    let mut features: Vec<_> = raw
+        .split(',')
+        .map(str::trim)
+        .filter(|entry| !entry.is_empty())
+        .map(|entry| {
+            let (package, feature) = entry
+                .split_once('/')
+                .unwrap_or_else(|| panic!("expected package/feature entry, got {}", entry));
+            CargoPackageFeature {
+                package: package.to_owned(),
+                feature: feature.to_owned(),
+            }
+        })
+        .collect();
+    features.sort_unstable();
+    features.dedup();
+    features
+}
+
+fn render_package_features(features: &[CargoPackageFeature]) -> String {
+    features
+        .iter()
+        .map(|feature| format!("{}/{}", feature.package, feature.feature))
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
+fn render_feature_names(features: &[CargoPackageFeature]) -> String {
+    let mut feature_names: Vec<_> = features
+        .iter()
+        .map(|feature| feature.feature.as_str())
+        .collect();
+    feature_names.sort_unstable();
+    feature_names.dedup();
+    feature_names.join(",")
+}
+
+fn parse_patch_ids(raw: &str) -> Vec<String> {
+    let mut patches: Vec<_> = raw
+        .split(',')
+        .map(str::trim)
+        .filter(|patch| !patch.is_empty())
+        .map(str::to_owned)
+        .collect();
+    patches.sort_unstable();
+    patches.dedup();
+    patches
+}
+
+fn build_engine_command(features: &[CargoPackageFeature]) -> Vec<String> {
+    let mut command = vec![
+        "cargo".to_owned(),
+        "build".to_owned(),
+        "--release".to_owned(),
+        "-p".to_owned(),
+        "wasmtime-bench-api".to_owned(),
+        "-p".to_owned(),
+        "cranelift-codegen".to_owned(),
+    ];
+    let mut packages: Vec<_> = features
+        .iter()
+        .map(|feature| feature.package.as_str())
+        .collect();
+    packages.sort_unstable();
+    packages.dedup();
+    for package in packages {
+        if package == "cranelift-codegen" {
+            continue;
+        }
+        command.push("-p".to_owned());
+        command.push(package.to_owned());
+    }
+    let feature_names = render_feature_names(features);
+    if !feature_names.is_empty() {
+        command.push("--features".to_owned());
+        command.push(feature_names);
+    }
+    command
+}
+
 /// Collect system metadata used for building the Wasmtime engine and emit a `.build-info` file
 /// containing key-value pairs.
-fn write_buildinfo<P>(build_dir: P, repository: &str, revision: &str) -> PathBuf
+fn write_buildinfo<P>(
+    build_dir: P,
+    repository: &str,
+    revision: &str,
+    build_profile: &str,
+    cargo_package_features: &[CargoPackageFeature],
+    build_patches: &[String],
+) -> PathBuf
 where
     P: AsRef<Path>,
 {
@@ -182,6 +365,14 @@ where
         writeln!(file, "NAME=wasmtime").unwrap();
         writeln!(file, "REPOSITORY={}", repository).unwrap();
         writeln!(file, "REVISION={}", revision).unwrap();
+        writeln!(file, "BUILD_PROFILE={}", build_profile).unwrap();
+        writeln!(
+            file,
+            "CARGO_PACKAGE_FEATURES={}",
+            render_package_features(cargo_package_features)
+        )
+        .unwrap();
+        writeln!(file, "BUILD_PATCHES={}", build_patches.join(",")).unwrap();
         writeln!(file, "_COMMIT={}", commit).unwrap();
         writeln!(file, "_COMMIT_DATETIME={}", datetime).unwrap();
         writeln!(file, "_CARGO={}", cargo).unwrap();
