@@ -24,7 +24,6 @@ shootout/shootout-keccak.wasm
 shootout/shootout-matrix.wasm
 shootout/shootout-memmove.wasm
 shootout/shootout-minicsv.wasm
-shootout/shootout-nestedloop.wasm
 shootout/shootout-random.wasm
 shootout/shootout-ratelimit.wasm
 shootout/shootout-seqhash.wasm
