@@ -1,34 +1,62 @@
+# Real-world workloads
+
+# JS runtime
 spidermonkey/spidermonkey-markdown.wasm
 spidermonkey/spidermonkey-json.wasm
 spidermonkey/spidermonkey-regex.wasm
-tinygo/tinygo-json.wasm
-tinygo/tinygo-regex.wasm
+
+# database
 sqlite3/sqlite3.wasm
+
+# solver
+cvc5/benchmark.wasm
+
+# parser (markdown, html, json)
 pulldown-cmark/benchmark.wasm
-blake3-scalar/benchmark.wasm
-blake3-simd/benchmark.wasm
-bz2/benchmark.wasm
-regex/benchmark.wasm
-rust-compression/benchmark.wasm
 rust-html-rewriter/benchmark.wasm
 rust-json/benchmark.wasm
-rust-protobuf/benchmark.wasm
-shootout/shootout-ackermann.wasm
-shootout/shootout-base64.wasm
-shootout/shootout-ctype.wasm
-shootout/shootout-ed25519.wasm
-shootout/shootout-fib2.wasm
-shootout/shootout-gimli.wasm
-shootout/shootout-heapsort.wasm
-shootout/shootout-keccak.wasm
-shootout/shootout-matrix.wasm
-shootout/shootout-memmove.wasm
-shootout/shootout-minicsv.wasm
-shootout/shootout-random.wasm
-shootout/shootout-ratelimit.wasm
-shootout/shootout-seqhash.wasm
-shootout/shootout-sieve.wasm
-shootout/shootout-switch.wasm
-shootout/shootout-xblabla20.wasm
-shootout/shootout-xchacha20.wasm
 
+# audio processing
+rnnoise/benchmark.wasm
+flac/benchmark.wasm
+
+# image processing
+tract-onnx-image-classification/benchmark.wasm
+
+# 3d geometry processing
+meshoptimizer/benchmark.wasm
+draco/benchmark.wasm
+
+# numerical / scientific
+fftw/benchmark.wasm
+
+# compression, encode/decode, crypto
+bz2/benchmark.wasm
+rust-compression/benchmark.wasm
+shootout/shootout-base64.wasm
+shootout/shootout-ed25519.wasm
+
+# tinygo/tinygo-json.wasm
+# tinygo/tinygo-regex.wasm
+# regex/benchmark.wasm
+
+# blake3-scalar/benchmark.wasm
+# blake3-simd/benchmark.wasm
+
+# microbenchmarks
+# shootout/shootout-ackermann.wasm
+# shootout/shootout-ctype.wasm
+# shootout/shootout-fib2.wasm
+# shootout/shootout-gimli.wasm
+# shootout/shootout-heapsort.wasm
+# shootout/shootout-keccak.wasm
+# shootout/shootout-matrix.wasm
+# shootout/shootout-memmove.wasm
+# shootout/shootout-minicsv.wasm
+# shootout/shootout-random.wasm
+# shootout/shootout-ratelimit.wasm
+# shootout/shootout-seqhash.wasm
+# shootout/shootout-sieve.wasm
+# shootout/shootout-switch.wasm
+# shootout/shootout-xblabla20.wasm
+# shootout/shootout-xchacha20.wasm
