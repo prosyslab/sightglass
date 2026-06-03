@@ -1,0 +1,9 @@
+iterations: 128
+input_bytes: 215423
+sample_rate: 44100
+channels: 2
+bits_per_sample: 16
+total_samples: 200000
+decoded_samples: 25600000
+frames: 6272
+checksum: a0b90367b855f383
