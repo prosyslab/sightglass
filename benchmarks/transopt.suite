@@ -13,18 +13,16 @@ cvc5/benchmark.wasm
 
 # parser (markdown, html, json)
 pulldown-cmark/benchmark.wasm
-rust-html-rewriter/benchmark.wasm
-rust-json/benchmark.wasm
 
 # audio processing
 rnnoise/benchmark.wasm
 flac/benchmark.wasm
 
 # image processing
+jpeg-turbo/benchmark.wasm
 tract-onnx-image-classification/benchmark.wasm
 
 # 3d geometry processing
-meshoptimizer/benchmark.wasm
 draco/benchmark.wasm
 
 # numerical / scientific
@@ -32,7 +30,7 @@ fftw/benchmark.wasm
 
 # compression, encode/decode, crypto
 bz2/benchmark.wasm
-rust-compression/benchmark.wasm
+zstd/benchmark.wasm
 shootout/shootout-base64.wasm
 shootout/shootout-ed25519.wasm
 
