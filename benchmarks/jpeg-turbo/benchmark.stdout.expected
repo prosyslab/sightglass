@@ -1,0 +1,9 @@
+iterations: 128
+input_bytes: 119615
+width: 640
+height: 427
+input_subsampling: 0
+input_colorspace: 1
+encoded_bytes: 36867
+jpeg_quality: 85
+checksum: 7e12f40280fa7483
